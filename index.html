@@ -505,31 +505,83 @@ class AudioManager {
 
 /* ------------------------------- STORAGE ----------------------------------- */
 const Storage = {
-  hasBackend: (typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function'),
-  hasAndroidBridge: (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.getItem === 'function'),
+  hasBackend:
+    typeof window !== 'undefined' &&
+    window.storage &&
+    typeof window.storage.get === 'function',
+
+  hasAndroidBridge:
+    typeof window !== 'undefined' &&
+    window.AndroidBridge &&
+    typeof window.AndroidBridge.getItem === 'function',
+
+  hasLocalStorage:
+    typeof window !== 'undefined' &&
+    (() => {
+      try {
+        return !!window.localStorage;
+      } catch (e) {
+        return false;
+      }
+    })(),
+
   mem: {},
+
   async load(key, fallback) {
     if (this.hasAndroidBridge) {
       try {
         const raw = window.AndroidBridge.getItem(key);
-        return (raw !== null && raw !== undefined && raw !== '') ? JSON.parse(raw) : fallback;
-      } catch (e) { return fallback; }
+        if (raw !== null && raw !== undefined && raw !== '') {
+          return JSON.parse(raw);
+        }
+      } catch (e) {}
     }
+
     if (this.hasBackend) {
       try {
         const r = await window.storage.get(key, false);
-        return r ? JSON.parse(r.value) : fallback;
-      } catch (e) { return fallback; }
+        if (r && r.value !== undefined && r.value !== null) {
+          return JSON.parse(r.value);
+        }
+      } catch (e) {}
     }
-    return (key in this.mem) ? this.mem[key] : fallback;
+
+    if (this.hasLocalStorage) {
+      try {
+        const raw = window.localStorage.getItem(key);
+        if (raw !== null) {
+          return JSON.parse(raw);
+        }
+      } catch (e) {}
+    }
+
+    return key in this.mem ? this.mem[key] : fallback;
   },
+
   async save(key, value) {
+    const serialized = JSON.stringify(value);
+
     if (this.hasAndroidBridge) {
-      try { window.AndroidBridge.setItem(key, JSON.stringify(value)); return; } catch (e) { /* fall through */ }
+      try {
+        window.AndroidBridge.setItem(key, serialized);
+        return;
+      } catch (e) {}
     }
+
     if (this.hasBackend) {
-      try { await window.storage.set(key, JSON.stringify(value), false); return; } catch (e) { /* fall through */ }
+      try {
+        await window.storage.set(key, serialized, false);
+        return;
+      } catch (e) {}
     }
+
+    if (this.hasLocalStorage) {
+      try {
+        window.localStorage.setItem(key, serialized);
+        return;
+      } catch (e) {}
+    }
+
     this.mem[key] = value;
   },
 };
