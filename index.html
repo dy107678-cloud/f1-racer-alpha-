@@ -834,8 +834,7 @@ class Car {
     // correct, which re-triggers this same bleed every single frame on top of the collision's
     // own one-time speed cut, turning what should be a brief ~0.5s "impact" into a much longer
     // and much more severe slowdown that never seemed to end.
-    if (this.collisionImpactTimer <= 0 && Math.abs(steer) > 0.4 && this.speed > st.topSpeed * 0.55) {
-      this.speed -= this.speed * 0.9 * Math.abs(steer) * dt;
+    
     }
 
     // Bodywork skidding (<=20%): loss of grip under hard cornering — an unintended extra yaw
@@ -1102,10 +1101,15 @@ function aiDecide(car, track, cars, dt, difficultySkill) {
   targetSpeed *= (1 - brakeForTraffic);
   if (headingToPit) targetSpeed = Math.min(targetSpeed, 90);
 
-  let throttle = 0, brake = 0;
-  if (car.speed < targetSpeed - 5) throttle = 1;
-  else if (car.speed > targetSpeed + 8) brake = 0.8;
+ let throttle = 0, brake = 0;
 
+const speedError = car.speed - targetSpeed;
+
+if (speedError < -5) {
+  throttle = clamp((-speedError) / 25, 0, 1);
+} else if (speedError > 5) {
+  brake = clamp(speedError / 90, 0, 0.75);
+}
   let boost = false;
   if (!headingToPit && curveAmt < 0.08 && car.boostCharges > 0 && car.boostTimer <= 0 && car.boostCooldown <= 0) {
     boost = Math.random() < (0.006 + car.stats.aggression * 0.004);
