@@ -825,41 +825,32 @@ class Car {
     this.speed = clamp(this.speed, 0, maxSpeed);
 
     // steering: turn rate scaled by handling, reduced at high speed for realism
-    const speedFactor = clamp(1 - (this.speed / st.topSpeed) * 0.55, 0.45, 1);
-    const turnRate = 2.6 * st.handling * wearHandlingMult * bodyworkHandlingMult * impactHandlingMult * speedFactor;
-    this.angle += steer * turnRate * dt;
-        // Corner speed limit: reduce speed gradually instead of hard-capping it.
-    const cornerLookahead = 90 + this.speed * 0.55;
-    const cornerFar = cornerLookahead + 140;
-    const cornerP1 = this.track.pointAt(this.s + cornerLookahead);
-    const cornerP2 = this.track.pointAt(this.s + cornerFar);
-    const curveAmt = Math.abs(angDiff(cornerP1.angle, cornerP2.angle));
+const speedFactor = clamp(1 - (this.speed / st.topSpeed) * 0.55, 0.45, 1);
+const turnRate = 2.6 * st.handling * wearHandlingMult * bodyworkHandlingMult * impactHandlingMult * speedFactor;
+this.angle += steer * turnRate * dt;
 
-    const cornerFactor = clamp(1 - curveAmt * 0.8, 0.55, 1);
-    const cornerSpeedLimit = st.topSpeed * cornerFactor;
+// Corner speed limit: reduce speed gradually instead of hard-capping it.
+const cornerLookahead = 90 + this.speed * 0.55;
+const cornerFar = cornerLookahead + 140;
+const cornerP1 = this.track.pointAt(this.s + cornerLookahead);
+const cornerP2 = this.track.pointAt(this.s + cornerFar);
+const curveAmt = Math.abs(angDiff(cornerP1.angle, cornerP2.angle));
 
-    const overSpeed = this.speed - cornerSpeedLimit;
+const cornerFactor = clamp(1 - curveAmt * 0.8, 0.55, 1);
+const cornerSpeedLimit = st.topSpeed * cornerFactor;
 
-    if (overSpeed > 0) {
-      const cornerSlowdown = clamp(overSpeed * 1.8, 0, 50);
-      this.speed -= cornerSlowdown * dt;
-    }
+const overSpeed = this.speed - cornerSpeedLimit;
 
-    // cornering slowdown: if steering hard while fast, bleed speed. Skipped during the temporary
-    // post-collision impact window — otherwise a car knocked off its line has to steer hard to
-    // correct, which re-triggers this same bleed every single frame on top of the collision's
-    // own one-time speed cut, turning what should be a brief ~0.5s "impact" into a much longer
-    // and much more severe slowdown that never seemed to end.
-  
+if (overSpeed > 0) {
+  const cornerSlowdown = clamp(overSpeed * 1.8, 0, 50);
+  this.speed -= cornerSlowdown * dt;
+}
 
-    // Bodywork skidding (<=20%): loss of grip under hard cornering — an unintended extra yaw
-    // plus additional speed scrub, on top of (not instead of) normal cornering physics.
-    if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
-      this.angle += (Math.random() - 0.5) * 0.07 * Math.abs(steer);
-      this.speed -= this.speed * 0.18 * dt;
-    }
-
-    const vx = Math.cos(this.angle) * this.speed;
+// Bodywork skidding
+if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
+  this.angle += (Math.random() - 0.5) * 0.07 * Math.abs(steer);
+  this.speed -= this.speed * 0.18 * dt;
+}
     const vy = Math.sin(this.angle) * this.speed;
     this.x += vx * dt;
     this.y += vy * dt;
