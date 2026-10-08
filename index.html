@@ -851,7 +851,8 @@ if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
   this.angle += (Math.random() - 0.5) * 0.07 * Math.abs(steer);
   this.speed -= this.speed * 0.18 * dt;
 }
-    const vy = Math.sin(this.angle) * this.speed;
+ const vx = Math.cos(this.angle) * this.speed;
+const vy = Math.sin(this.angle) * this.speed;
     this.x += vx * dt;
     this.y += vy * dt;
   }
