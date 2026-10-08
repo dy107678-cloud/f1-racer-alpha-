@@ -1178,17 +1178,28 @@ class Game {
     const teamId = this.player.team.id, trackId = this.track.def.id;
     s.carCounts[teamId] = (s.carCounts[teamId] || 0) + 1;
     s.trackCounts[trackId] = (s.trackCounts[trackId] || 0) + 1;
-    if (finished) {
-      const finishers = this.cars.filter(c => c.finished).sort((a, b) => a.finishTime - b.finishTime);
-      const pos = finishers.indexOf(this.player) + 1;
-      this.player.finishPos = pos || this.cars.length;
-      if (pos === 1) s.wins += 1; else s.losses += 1;
-      if (s.bestPosition == null || pos < s.bestPosition) s.bestPosition = pos;
-      if (this.player.bestLapTime != null && (s.bestLap == null || this.player.bestLapTime < s.bestLap)) s.bestLap = this.player.bestLapTime;
-      if (s.bestRaceTime == null || this.player.finishTime < s.bestRaceTime) {
-        if (this.player.finishPos === 1) s.bestRaceTime = this.player.finishTime;
-      }
-    } else {
+ if (finished) {
+  const ranked = [...this.cars].sort((a, b) => b.totalProgress - a.totalProgress);
+  const pos = ranked.indexOf(this.player) + 1;
+
+  this.player.finishPos = pos || this.cars.length;
+
+  if (pos === 1) s.wins += 1;
+  else s.losses += 1;
+
+  if (s.bestPosition == null || pos < s.bestPosition) s.bestPosition = pos;
+
+  if (this.player.bestLapTime != null &&
+      (s.bestLap == null || this.player.bestLapTime < s.bestLap)) {
+    s.bestLap = this.player.bestLapTime;
+  }
+
+  if (s.bestRaceTime == null || this.player.finishTime < s.bestRaceTime) {
+    if (this.player.finishPos === 1) {
+      s.bestRaceTime = this.player.finishTime;
+    }
+  }
+} else {
       s.losses += 1;
     }
     this.stats = s;
