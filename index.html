@@ -312,12 +312,78 @@ class Track {
     this.N = N;
     this.step = step;
     this.total = total;
-    // bounds for camera / minimap
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const p of uni) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
-    this.bounds = { minX: minX - 400, minY: minY - 400, maxX: maxX + 400, maxY: maxY + 400 };
-  }
+// bounds for camera / minimap
+let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+for (const p of uni) {
+  minX = Math.min(minX, p.x);
+  minY = Math.min(minY, p.y);
+  maxX = Math.max(maxX, p.x);
+  maxY = Math.max(maxY, p.y);
+}
 
+this.bounds = {
+  minX: minX - 400,
+  minY: minY - 400,
+  maxX: maxX + 400,
+  maxY: maxY + 400
+};
+
+this._buildRenderChunks();
+}
+
+_buildRenderChunks() {
+  const CHUNK_SIZE = 20;
+  this.renderChunks = [];
+
+  for (let start = 0; start < this.N; start += CHUNK_SIZE) {
+    const end = Math.min(start + CHUNK_SIZE, this.N);
+
+    const mainPath = new Path2D();
+    const leftPath = new Path2D();
+    const rightPath = new Path2D();
+
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    for (let i = start; i <= end; i++) {
+      const idx = i % this.N;
+      const p = this.points[idx];
+
+      const nx = -Math.sin(p.angle);
+      const ny = Math.cos(p.angle);
+
+      const lx = p.x + nx * (this.width / 2);
+      const ly = p.y + ny * (this.width / 2);
+      const rx = p.x - nx * (this.width / 2);
+      const ry = p.y - ny * (this.width / 2);
+
+      if (i === start) {
+        mainPath.moveTo(p.x, p.y);
+        leftPath.moveTo(lx, ly);
+        rightPath.moveTo(rx, ry);
+      } else {
+        mainPath.lineTo(p.x, p.y);
+        leftPath.lineTo(lx, ly);
+        rightPath.lineTo(rx, ry);
+      }
+
+      minX = Math.min(minX, p.x, lx, rx);
+      minY = Math.min(minY, p.y, ly, ry);
+      maxX = Math.max(maxX, p.x, lx, rx);
+      maxY = Math.max(maxY, p.y, ly, ry);
+    }
+
+    this.renderChunks.push({
+      mainPath,
+      leftPath,
+      rightPath,
+      minX: minX - 140,
+      minY: minY - 140,
+      maxX: maxX + 140,
+      maxY: maxY + 140
+    });
+  }
+}
   idxAt(s) {
     s = ((s % this.total) + this.total) % this.total;
     return Math.floor(s / this.step) % this.N;
@@ -1439,25 +1505,61 @@ class Game {
 
   _trackPathPoints() { return this.track.points; }
 
+  _trackPathPoints() { return this.track.points; }
+
   _strokeTrackPath(ctx) {
-    const pts = this._trackPathPoints();
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i <= pts.length; i++) { const p = pts[i % pts.length]; ctx.lineTo(p.x, p.y); }
-    ctx.stroke();
+    const track = this.track;
+    const zoom = this.zoom || 1;
+
+    const halfW = this.W / (2 * zoom);
+    const halfH = this.H / (2 * zoom);
+
+    const left = this.camera.x - halfW - 140;
+    const right = this.camera.x + halfW + 140;
+    const top = this.camera.y - halfH - 140;
+    const bottom = this.camera.y + halfH + 140;
+
+    for (const chunk of track.renderChunks) {
+      if (
+        chunk.maxX < left ||
+        chunk.minX > right ||
+        chunk.maxY < top ||
+        chunk.minY > bottom
+      ) {
+        continue;
+      }
+
+      ctx.stroke(chunk.mainPath);
+    }
   }
 
   _strokeOffset(ctx, off) {
-    const pts = this._trackPathPoints();
-    ctx.beginPath();
-    for (let i = 0; i <= pts.length; i++) {
-      const p = pts[i % pts.length];
-      const n = { x: -Math.sin(p.angle), y: Math.cos(p.angle) };
-      const x = p.x + n.x * off, y = p.y + n.y * off;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  const track = this.track;
+  const zoom = this.zoom || 1;
+
+  const halfW = this.W / (2 * zoom);
+  const halfH = this.H / (2 * zoom);
+
+  const left = this.camera.x - halfW - 140;
+  const right = this.camera.x + halfW + 140;
+  const top = this.camera.y - halfH - 140;
+  const bottom = this.camera.y + halfH + 140;
+
+  const pathKey = off >= 0 ? 'leftPath' : 'rightPath';
+
+  for (const chunk of track.renderChunks) {
+    if (
+      chunk.maxX < left ||
+      chunk.minX > right ||
+      chunk.maxY < top ||
+      chunk.minY > bottom
+    ) {
+      continue;
     }
-    ctx.stroke();
+
+    ctx.stroke(chunk[pathKey]);
   }
+}
 
   _drawStartFinish(ctx) {
     const track = this.track;
