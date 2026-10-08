@@ -1096,7 +1096,7 @@ function aiDecide(car, track, cars, dt, difficultySkill) {
   const p1 = track.pointAt(nearInfo.s + lookaheadDist);
   const p2 = track.pointAt(nearInfo.s + lookaheadFar);
   const curveAmt = Math.abs(angDiff(p1.angle, p2.angle));
-  const cornerFactor = clamp(1 - curveAmt * 1.6, 0.28, 1);
+  const cornerFactor = clampconst cornerFactor = clamp(1 - curveAmt * 0.8, 0.55, 1);(1 - curveAmt * 1.6, 0.28, 1);
   let targetSpeed = car.stats.topSpeed * cornerFactor * (mistake ? rand(0.7, 1) : 1);
   targetSpeed *= (1 - brakeForTraffic);
   if (headingToPit) targetSpeed = Math.min(targetSpeed, 90);
