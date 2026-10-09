@@ -1296,7 +1296,13 @@ class Game {
     this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.W = w; this.H = h;
-    this.zoom = clamp(h / 480, 0.55, 1.15);
+    const isMobile =
+  (('ontouchstart' in window) || navigator.maxTouchPoints > 0) &&
+  Math.min(w, h) <= 600;
+
+this.zoom = isMobile
+  ? clamp(h / 310, 1.05, 1.4)
+  : clamp(h / 480, 0.55, 1.15);
   }
 
 
