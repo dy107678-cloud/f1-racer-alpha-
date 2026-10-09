@@ -802,10 +802,24 @@ class Car {
     return this.lap * this.track.total + this.s;
   }
 
-  /* Bodywork damage tiers (spec-defined): 100-51 healthy, <=50 slower response,
-     <=20 skidding risk, <=10 both (already implied by the two conditions overlapping). */
-  bodyworkSlowResponse() { return this.bodyworkWear <= 50; }
-  bodyworkSkidding() { return this.bodyworkWear <= 20; }
+   /* Bodywork damage tiers:
+     61-100: normal
+     31-60: weaker steering response
+     16-30: skidding
+     6-15: both penalties
+     5: destroyed
+   
+   /* Bodywork damage tiers */
+  bodyworkSlowResponse() {
+    return (
+      (this.bodyworkWear <= 60 && this.bodyworkWear > 30) ||
+      (this.bodyworkWear <= 15 && this.bodyworkWear > 5)
+    );
+  }
+
+  bodyworkSkidding() {
+    return this.bodyworkWear <= 30 && this.bodyworkWear > 5;
+  }
   bodyworkRepairSeconds() {
     if (this.bodyworkWear >= 80) return 2;
     if (this.bodyworkWear >= 40) return 5;
@@ -1503,7 +1517,21 @@ this.zoom = isMobile
       }
    }
     resolveCarCollisions(this.cars, this.audio);
+for (const car of this.cars) {
+  if (car.finished || car.outOfRace || car.bodyworkWear > 5) {
+    continue;
+  }
 
+  if (car.isPlayer) {
+    this._onBodyworkDefeat();
+    return;
+  }
+
+  car.outOfRace = true;
+  car.state = 'out';
+  car.speed = 0;
+  car.aiWantsPit = false;
+}
     // camera follow
     this.camera.x = lerp(this.camera.x, this.player.x, Math.min(1, dt * 5));
     this.camera.y = lerp(this.camera.y, this.player.y, Math.min(1, dt * 5));
@@ -1544,7 +1572,11 @@ this.zoom = isMobile
     this.offTrackDefeat = true;
     this.goto('DEFEAT_OFFTRACK');
   }
-
+  _onBodyworkDefeat() {
+    this.audio.stopEngine();
+    this.recordResult(false);
+    this.goto('DEFEAT_BODYWORK');
+  }
   /* ------------------------------- LOOP -------------------------------- */
   _loop(tMs) {
     if (!this._lastT) this._lastT = tMs;
@@ -1575,6 +1607,7 @@ this.zoom = isMobile
       case 'PAUSED': this._renderWorld(); this._renderHUD(); this._renderPause(); break;
       case 'VICTORY_OR_DEFEAT': this._renderWorld(); this._renderResult(); break;
       case 'DEFEAT_OFFTRACK': this._renderWorld(); this._renderOfftrackDefeat(); break;
+      case 'DEFEAT_BODYWORK': this._renderWorld(); this._renderBodyworkDefeat(); break;
     }
   }
 
@@ -1961,15 +1994,23 @@ this.zoom = isMobile
     ctx.fillText(wear >= 1 ? 'TIRES \u2014 PIT!' : 'TIRES', 100, 190);
     // bodywork wear bar
     const body = p.bodyworkWear;
-    const bodyColor = body <= 20 ? '#ff3b30' : (body <= 50 ? '#ffcf4d' : '#3ddc84');
+ const bodyColor =
+  body <= 15 ? '#ff3b30' :
+  body <= 30 ? '#ff8a65' :
+  body <= 60 ? '#ffcf4d' :
+  '#3ddc84';
     ctx.fillStyle = '#333';
     ctx.fillRect(100, 198, 90, 9);
     ctx.fillStyle = bodyColor;
     ctx.fillRect(100, 198, 90 * clamp(body / 100, 0, 1), 9);
     ctx.font = '600 10px "Segoe UI", Arial';
-    ctx.fillStyle = body <= 50 ? bodyColor : '#9aa';
-    const bodyLabel = body <= 10 ? `BODY ${Math.round(body)}% \u2014 CRITICAL` : body <= 20 ? `BODY ${Math.round(body)}% \u2014 SKID RISK` : body <= 50 ? `BODY ${Math.round(body)}% \u2014 RESPONSE\u2193` : `BODY ${Math.round(body)}%`;
-    ctx.fillText(bodyLabel, 100, 220);
+   ctx.fillStyle = body <= 60 ? bodyColor : '#9aa';
+ const bodyLabel =
+  body <= 5  ? `BODY ${Math.round(body)}% — DESTROYED` :
+  body <= 15 ? `BODY ${Math.round(body)}% — BOTH` :
+  body <= 30 ? `BODY ${Math.round(body)}% — SKID RISK` :
+  body <= 60 ? `BODY ${Math.round(body)}% — RESPONSE↓` :
+  `BODY ${Math.round(body)}%`;
 
     // opponents mini leaderboard (stacked below driver panel, top-right)
     const ranked = [...this.cars].sort((a, b) => (a.position || 9) - (b.position || 9));
@@ -2144,7 +2185,7 @@ this.zoom = isMobile
     ctx.restore();
   }
 
-  _renderOfftrackDefeat() {
+ 
     const ctx = this.ctx;
     ctx.save();
     ctx.fillStyle = 'rgba(60,0,0,0.72)'; ctx.fillRect(0, 0, this.W, this.H);
@@ -2158,7 +2199,29 @@ this.zoom = isMobile
     this._btnCenter('Return to Menu', this.H / 2 + 64, () => this.goto('MENU'));
     ctx.restore();
   }
+  _renderBodyworkDefeat() {
+    const ctx = this.ctx;
+    ctx.save();
 
+    ctx.fillStyle = 'rgba(60,0,0,0.78)';
+    ctx.fillRect(0, 0, this.W, this.H);
+
+    ctx.textAlign = 'center';
+    ctx.font = '900 40px Arial';
+    ctx.fillStyle = '#ff4d4d';
+    ctx.fillText('RACE LOST', this.W / 2, this.H / 2 - 90);
+
+    ctx.font = '700 20px Arial';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('BODYWORK DESTROYED', this.W / 2, this.H / 2 - 54);
+
+    this._btnCenter('Retry Race', this.H / 2 + 10,
+      () => this.startRace());
+    this._btnCenter('Return to Menu', this.H / 2 + 64,
+      () => this.goto('MENU'));
+
+    ctx.restore();
+  }
   /* -------------------------------- MENUS -------------------------------- */
   _bgGradient() {
     const ctx = this.ctx;
