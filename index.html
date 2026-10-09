@@ -400,23 +400,59 @@ _buildRenderChunks() {
     return { x: p.x + n.x * lateral, y: p.y + n.y * lateral };
   }
 
-  /* Windowed nearest-point search along track for a world position, given a guess s. */
+  /* Project onto the nearest local track segment, not only a sampled track point. */
   nearest(x, y, guessS) {
     const guessIdx = this.idxAt(guessS == null ? 0 : guessS);
-    let bestIdx = guessIdx, bestD = Infinity;
+    let bestIdx = guessIdx, bestT = 0, bestD = Infinity;
+    let bestX = this.points[guessIdx].x;
+    let bestY = this.points[guessIdx].y;
     const win = guessS == null ? this.N : 26;
+
     for (let o = -win; o <= win; o++) {
       const idx = ((guessIdx + o) % this.N + this.N) % this.N;
       const p = this.points[idx];
-      const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
-      if (d < bestD) { bestD = d; bestIdx = idx; }
+      const q = this.points[(idx + 1) % this.N];
+      const dx = q.x - p.x, dy = q.y - p.y;
+      const lenSq = dx * dx + dy * dy;
+
+      if (lenSq < 1e-9) continue;
+
+      const t = clamp(
+        ((x - p.x) * dx + (y - p.y) * dy) / lenSq,
+        0,
+        1
+      );
+
+      const projectedX = p.x + dx * t;
+      const projectedY = p.y + dy * t;
+      const ex = x - projectedX;
+      const ey = y - projectedY;
+      const d = ex * ex + ey * ey;
+
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = idx;
+        bestT = t;
+        bestX = projectedX;
+        bestY = projectedY;
+      }
     }
+
     const p = this.points[bestIdx];
-    const n = { x: -Math.sin(p.angle), y: Math.cos(p.angle) };
-    const vx = x - p.x, vy = y - p.y;
-    const lateral = vx * n.x + vy * n.y;
-    const s = bestIdx * this.step;
-    return { s, lateral, idx: bestIdx, angle: p.angle };
+    const q = this.points[(bestIdx + 1) % this.N];
+    const dx = q.x - p.x, dy = q.y - p.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const nx = -dy / length;
+    const ny = dx / length;
+    const lateral = (x - bestX) * nx + (y - bestY) * ny;
+    const s = ((bestIdx + bestT) % this.N) * this.step;
+
+    return {
+      s,
+      lateral,
+      idx: bestIdx,
+      angle: Math.atan2(dy, dx)
+    };
   }
 
   _buildCheckpoints(count) {
