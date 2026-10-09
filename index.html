@@ -2021,12 +2021,6 @@ for (const car of this.cars) {
     ctx.font = '600 13px "Segoe UI", Arial';
     ctx.fillStyle = '#c9c9d4';
     ctx.fillText(`TIME ${fmtTime(this.raceClock)}`, 28, 144);
- const bodyLabel =
-  body <= 5  ? `BODY ${Math.round(body)}% — DESTROYED` :
-  body <= 15 ? `BODY ${Math.round(body)}% — BOTH` :
-  body <= 30 ? `BODY ${Math.round(body)}% — SKID RISK` :
-  body <= 60 ? `BODY ${Math.round(body)}% — RESPONSE↓` :
-  `BODY ${Math.round(body)}%`;
 
     // opponents mini leaderboard (stacked below driver panel, top-right)
     const ranked = [...this.cars].sort((a, b) => (a.position || 9) - (b.position || 9));
