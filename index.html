@@ -840,7 +840,7 @@ if (inPitLane || this.state === 'pit') {
     // friction / drag
     this.speed -= this.speed * 0.35 * dt;
     if (throttle <= 0 && brake <= 0) this.speed -= 40 * dt * Math.sign(this.speed || 1) * (this.speed > 0 ? 1 : 0);
-    this.speed = clamp(this.speed, 0, maxSpeed);
+  this.speed = clamp(this.speed, 0, frameSpeedCap);
 
     // steering: turn rate scaled by handling, reduced at high speed for realism
 const speedFactor = clamp(1 - (this.speed / st.topSpeed) * 0.55, 0.45, 1);
@@ -1012,7 +1012,6 @@ function updateTireCritical(car, dt, audio) {
     if (car.isPlayer && audio) audio.bomb();
   }
 }
-}
 
 function resolveCarCollisions(cars, audio) {
   for (let i = 0; i < cars.length; i++) {
@@ -1167,7 +1166,18 @@ if (speedError < -5) {
 
   return { throttle, brake, steer, boost };
 }
+function compareRacePosition(a, b) {
+  if (a.finished && b.finished) {
+    const aTime = a.finishTime == null ? Infinity : a.finishTime;
+    const bTime = b.finishTime == null ? Infinity : b.finishTime;
+    return aTime - bTime;
+  }
 
+  if (a.finished) return -1;
+  if (b.finished) return 1;
+
+  return b.totalProgress - a.totalProgress;
+}
 /* ================================== GAME ===================================== */
 class Game {
   constructor(canvas) {
@@ -1299,7 +1309,7 @@ class Game {
     s.carCounts[teamId] = (s.carCounts[teamId] || 0) + 1;
     s.trackCounts[trackId] = (s.trackCounts[trackId] || 0) + 1;
  if (finished) {
-  const ranked = [...this.cars].sort((a, b) => b.totalProgress - a.totalProgress);
+ const ranked = [...this.cars].sort(compareRacePosition);
   const pos = ranked.indexOf(this.player) + 1;
 
   this.player.finishPos = pos || this.cars.length;
@@ -1381,7 +1391,8 @@ class Game {
         (c) => { if (c.isPlayer) { this.lapPopup = { text: `LAP ${c.lap} / ${c.totalLaps}`, t: 2.0 }; this.audio.lap(); } },
         (c) => { if (c.isPlayer) this._onPlayerFinish(); }
       );
-
+      if (this.state !== 'RACING') return;
+      
       // A car inside the pit APPROACH zone (which starts well before the physical pit
       // entrance) is allowed to be out past the normal track edge without tripping the
       // off-track check or the AI's line-correction — matching the distance bots actually
@@ -1415,7 +1426,7 @@ class Game {
     this.camera.y = lerp(this.camera.y, this.player.y, Math.min(1, dt * 5));
 
     // positions
-    const ranked = [...this.cars].sort((a, b) => b.totalProgress - a.totalProgress);
+   const ranked = [...this.cars].sort(compareRacePosition);
     ranked.forEach((c, i) => { c.position = i + 1; });
     if (this.player.position !== this.lastPositions.player && this.lastPositions.player != null) {
       this.positionPopup = { text: `NOW P${this.player.position}`, t: 1.6 };
