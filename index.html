@@ -767,6 +767,7 @@ class Car {
     this.checkpointIndex = 1;
     this.prevS = s;
     this.finished = false;
+    this.outOfRace = false;
     this.finishTime = null;
     this.finishPos = null;
     this.state = 'grid'; // grid, racing, bombed, pit, tirefail, finished
@@ -1053,7 +1054,8 @@ function resolveCarCollisions(cars, audio) {
   for (let i = 0; i < cars.length; i++) {
     for (let j = i + 1; j < cars.length; j++) {
       const a = cars[i], b = cars[j];
-      if (a.state === 'bombed' || b.state === 'bombed') continue;
+     if (a.outOfRace || b.outOfRace ||
+    a.state === 'bombed' || b.state === 'bombed') continue;
       const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy) || 0.001;
       const minD = CAR_RADIUS * 2;
@@ -1215,6 +1217,9 @@ if (speedError < -5) {
   return { throttle, brake, steer, boost };
 }
 function compareRacePosition(a, b) {
+  if (a.outOfRace && b.outOfRace) return 0;
+if (a.outOfRace) return 1;
+if (b.outOfRace) return -1;
   if (a.finished && b.finished) {
     const aTime = a.finishTime == null ? Infinity : a.finishTime;
     const bTime = b.finishTime == null ? Infinity : b.finishTime;
@@ -1411,9 +1416,10 @@ class Game {
     const avoidPositions = this.cars.map(c => ({ x: c.x, y: c.y }));
     track.update(dt, track.def.hazardDensity, avoidPositions);
 
-    for (const car of this.cars) {
-      car._nowRef = this.raceClock;
-      if (car.finished) { car.state = 'finished'; continue; }
+   for (const car of this.cars) {
+  car._nowRef = this.raceClock;
+  if (car.outOfRace) continue;
+  if (car.finished) { car.state = 'finished'; continue; }
       if (car.state === 'bombed' || car.state === 'pit' || car.state === 'tirefail') {
         car.stateTimer -= dt;
         car.physicsStep(dt, 0, 0, 0, false);
@@ -1455,7 +1461,7 @@ class Game {
           if (car.offTrackTimer > 0.22) { this._onOffTrack(); return; }
         } else car.offTrackTimer = 0;
       }
-           // AI recovery: allow small track excursions without fighting movement.
+               // AI recovery: allow brief excursions before retiring a bot.
       if (!car.isPlayer && !(car.aiWantsPit && inPitApproachNow)) {
         const recoveryTrigger = track.width / 2 + 14;
         const safeLateral = Math.max(
@@ -1464,6 +1470,17 @@ class Game {
         );
 
         if (Math.abs(car.lateral) > recoveryTrigger) {
+          car.offTrackTimer += dt;
+
+          // Retire only if recovery has failed for 0.75 seconds.
+          if (car.offTrackTimer >= 0.75) {
+            car.outOfRace = true;
+            car.state = 'out';
+            car.speed = 0;
+            continue;
+          }
+
+          // Keep pushing the bot back toward the racing surface.
           const recoveryLateral =
             Math.sign(car.lateral) * safeLateral;
 
@@ -1471,9 +1488,13 @@ class Game {
 
           car.x = lerp(car.x, w.x, 0.12);
           car.y = lerp(car.y, w.y, 0.12);
+        } else {
+          car.offTrackTimer = 0;
         }
+      } else if (!car.isPlayer) {
+        // Pit approach is intentional, so don't count it as an excursion.
+        car.offTrackTimer = 0;
       }
-    }
 
     resolveCarCollisions(this.cars, this.audio);
 
@@ -1497,9 +1518,13 @@ class Game {
     for (const c of this.cars) if (c.hitFlash > 0) c.hitFlash -= dt;
 
     // check if all AI + player finished or player finished -> handled in _onPlayerFinish
-    for (const c of this.cars) if (!c.isPlayer && !c.finished && c.lap >= c.totalLaps) { c.finished = true; c.finishTime = this.raceClock; }
-  }
-
+    for (const c of this.cars) {
+  if (!c.isPlayer && !c.outOfRace && !c.finished && c.lap >= c.totalLaps) {
+    c.finished = true;
+    c.finishTime = this.raceClock;
+   }
+ }
+} 
   _onPlayerFinish() {
     this.audio.stopEngine();
     this.recordResult(true);
