@@ -1940,19 +1940,6 @@ for (const car of this.cars) {
     ctx.font = '600 13px "Segoe UI", Arial';
     ctx.textBaseline = 'middle';
 
-    // top-left: lap/position/timer
-    ctx.fillStyle = 'rgba(10,10,14,0.72)';
-    this._panel(ctx, 14, 14, 190, 92, 12); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = '700 22px "Segoe UI", Arial';
-    ctx.fillText(`LAP ${Math.min(p.lap + 1, p.totalLaps)} / ${p.totalLaps}`, 28, 38);
-    ctx.font = '700 26px "Segoe UI", Arial';
-    ctx.fillStyle = '#ffcf4d';
-    ctx.fillText(`P${p.position || 1}`, 28, 68);
-    ctx.font = '600 13px "Segoe UI", Arial';
-    ctx.fillStyle = '#c9c9d4';
-    ctx.fillText(fmtTime(this.raceClock), 28, 92);
-
     // top-right: driver/team
     ctx.fillStyle = 'rgba(10,10,14,0.72)';
     this._panel(ctx, this.W - 224, 14, 210, 60, 12); ctx.fill();
@@ -1965,46 +1952,75 @@ for (const car of this.cars) {
     ctx.fillText(p.team.name.toUpperCase(), this.W - 34, 54);
     ctx.textAlign = 'left';
 
-    // speedometer + tires + bodywork panel (stacked below lap panel, top-left, to keep bottom corners free for mobile controls)
+    // Car information: speed, boost, tires, bodywork and race timer
     const spd = Math.round(p.speed * 1.15);
+
     ctx.fillStyle = 'rgba(10,10,14,0.72)';
-    this._panel(ctx, 14, 116, 190, 118, 12); ctx.fill();
+    this._panel(ctx, 14, 14, 190, 150, 12);
+    ctx.fill();
+
+    // Speed
     ctx.fillStyle = '#fff';
     ctx.font = '700 26px "Segoe UI", Arial';
-    ctx.fillText(`${spd}`, 28, 150);
+    ctx.fillText(`${spd}`, 28, 48);
+
     ctx.font = '600 11px "Segoe UI", Arial';
     ctx.fillStyle = '#9aa';
-    ctx.fillText('KM/H', 28, 170);
-    // boost bar
+    ctx.fillText('KM/H', 28, 68);
+
+    // Boost
     ctx.fillStyle = '#333';
-    ctx.fillRect(100, 134, 90, 9);
+    ctx.fillRect(100, 32, 90, 9);
     ctx.fillStyle = p.boostTimer > 0 ? '#ffb020' : '#3ddc84';
-    ctx.fillRect(100, 134, 90 * (p.boostCharges / 3), 9);
+    ctx.fillRect(100, 32, 90 * (p.boostCharges / 3), 9);
+
     ctx.font = '600 10px "Segoe UI", Arial';
     ctx.fillStyle = '#9aa';
-    ctx.fillText('BOOST', 100, 150);
-    // tire wear bar
+    ctx.fillText('BOOST', 100, 48);
+
+    // Tires
     const wear = p.tireWear();
+
     ctx.fillStyle = '#333';
-    ctx.fillRect(100, 168, 90, 9);
-    ctx.fillStyle = wear >= 1 ? '#ff3b30' : (wear > 0.6 ? '#ffcf4d' : '#3ddc84');
-    ctx.fillRect(100, 168, 90 * clamp(wear, 0, 1), 9);
+    ctx.fillRect(100, 66, 90, 9);
+    ctx.fillStyle = wear >= 1
+      ? '#ff3b30'
+      : (wear > 0.6 ? '#ffcf4d' : '#3ddc84');
+    ctx.fillRect(100, 66, 90 * clamp(wear, 0, 1), 9);
+
     ctx.font = '600 10px "Segoe UI", Arial';
     ctx.fillStyle = wear >= 1 ? '#ff6b60' : '#9aa';
-    ctx.fillText(wear >= 1 ? 'TIRES \u2014 PIT!' : 'TIRES', 100, 190);
-    // bodywork wear bar
+    ctx.fillText(wear >= 1 ? 'TIRES — PIT!' : 'TIRES', 100, 88);
+
+    // Bodywork
     const body = p.bodyworkWear;
- const bodyColor =
-  body <= 15 ? '#ff3b30' :
-  body <= 30 ? '#ff8a65' :
-  body <= 60 ? '#ffcf4d' :
-  '#3ddc84';
+    const bodyColor =
+      body <= 15 ? '#ff3b30' :
+      body <= 30 ? '#ff8a65' :
+      body <= 60 ? '#ffcf4d' :
+      '#3ddc84';
+
     ctx.fillStyle = '#333';
-    ctx.fillRect(100, 198, 90, 9);
+    ctx.fillRect(100, 96, 90, 9);
     ctx.fillStyle = bodyColor;
-    ctx.fillRect(100, 198, 90 * clamp(body / 100, 0, 1), 9);
+    ctx.fillRect(100, 96, 90 * clamp(body / 100, 0, 1), 9);
+
     ctx.font = '600 10px "Segoe UI", Arial';
-   ctx.fillStyle = body <= 60 ? bodyColor : '#9aa';
+    ctx.fillStyle = body <= 60 ? bodyColor : '#9aa';
+
+    const bodyLabel =
+      body <= 5  ? `BODY ${Math.round(body)}% — DESTROYED` :
+      body <= 15 ? `BODY ${Math.round(body)}% — BOTH` :
+      body <= 30 ? `BODY ${Math.round(body)}% — SKID RISK` :
+      body <= 60 ? `BODY ${Math.round(body)}% — RESPONSE↓` :
+      `BODY ${Math.round(body)}%`;
+
+    ctx.fillText(bodyLabel, 100, 118);
+
+    // Race timer
+    ctx.font = '600 13px "Segoe UI", Arial';
+    ctx.fillStyle = '#c9c9d4';
+    ctx.fillText(`TIME ${fmtTime(this.raceClock)}`, 28, 144);
  const bodyLabel =
   body <= 5  ? `BODY ${Math.round(body)}% — DESTROYED` :
   body <= 15 ? `BODY ${Math.round(body)}% — BOTH` :
