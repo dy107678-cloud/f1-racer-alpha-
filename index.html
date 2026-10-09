@@ -1119,9 +1119,16 @@ function aiDecide(car, track, cars, dt, difficultySkill) {
       targetLateral = lerp(targetLateralBase, track.pitLaneOffset, approachFrac);
     }
     brakeForTraffic = Math.max(brakeForTraffic, 0.25); // ease off approaching the pit lane
-  } else {
-    targetLateral = clamp(targetLateralBase + avoidLateral, -track.width * 0.42, track.width * 0.42);
-    if (mistake) targetLateral += rand(-track.width * 0.25, track.width * 0.25);
+   } else {
+    const mistakeOffset = mistake
+      ? rand(-track.width * 0.25, track.width * 0.25)
+      : 0;
+
+    targetLateral = clamp(
+      targetLateralBase + avoidLateral + mistakeOffset,
+      -track.width * 0.42,
+      track.width * 0.42
+    );
   }
 
   const targetS = nearInfo.s + lookaheadDist;
@@ -1408,13 +1415,13 @@ class Game {
         } else car.offTrackTimer = 0;
       }
       // AI soft boundary clamp (skipped through the pit approach+zone, so bots can actually pit)
-      if (!car.isPlayer && !inPitApproachNow) {
+   if (!car.isPlayer && !(car.aiWantsPit && inPitApproachNow)) {
         const lim = track.width / 2 - 6;
         if (Math.abs(car.lateral) > lim) {
           const w = track.worldAt(car.s, clamp(car.lateral, -lim, lim));
           car.x = lerp(car.x, w.x, 0.6);
           car.y = lerp(car.y, w.y, 0.6);
-          car.speed *= 0.97;
+          car.speed *= Math.pow(0.995, dt * 60);
         }
       }
     }
