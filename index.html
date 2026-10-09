@@ -708,6 +708,19 @@ class Input {
     this.mouse = { x: 0, y: 0, clicked: false, down: false };
     // virtual on-screen control state, set by touch buttons (see boot code)
     this.touch = { throttle: 0, brake: 0, steer: 0, boost: false, pauseTap: false };
+    const resetControls = () => {
+  this.keys.clear();
+  this.touch.throttle = 0;
+  this.touch.brake = 0;
+  this.touch.steer = 0;
+  this.touch.boost = false;
+};
+
+window.addEventListener('blur', resetControls);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) resetControls();
+});
   }
   down(k) { return this.keys.has(k); }
   pressed(k) { const v = this.justPressed.has(k); return v; }
@@ -2563,8 +2576,11 @@ if (typeof window !== 'undefined') window.bootFormulaRacer = bootFormulaRacer;
 
 function setupMobileControls(game) {
   const touch = game.input.touch;
-  const isTouchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-  if (isTouchCapable) document.body.classList.add('is-touch');
+ const isMobileControlDevice =
+  window.matchMedia('(pointer: coarse)').matches &&
+  Math.min(screen.width, screen.height) <= 900;
+
+document.body.classList.toggle('is-touch', isMobileControlDevice);
   const supportsPointer = typeof window.PointerEvent !== 'undefined';
 
   // Each button tracks its OWN set of active pointer ids (finger/mouse), independent of every
@@ -2580,6 +2596,7 @@ function setupMobileControls(game) {
       const start = (e) => {
         e.preventDefault();
         active.add(e.pointerId);
+        el.addEventListener('lostpointercapture', end);
         try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         el.classList.add('mc-active');
         onStart();
