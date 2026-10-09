@@ -1416,12 +1416,12 @@ class Game {
       }
       // AI soft boundary clamp (skipped through the pit approach+zone, so bots can actually pit)
    if (!car.isPlayer && !(car.aiWantsPit && inPitApproachNow)) {
-        const lim = track.width / 2 - 6;
+        const lim = Math.max(0, track.width / 2 - CAR_RADIUS - 2);
         if (Math.abs(car.lateral) > lim) {
           const w = track.worldAt(car.s, clamp(car.lateral, -lim, lim));
           car.x = lerp(car.x, w.x, 0.6);
           car.y = lerp(car.y, w.y, 0.6);
-          car.speed *= Math.pow(0.995, dt * 60);
+          car.speed *= Math.pow(0.9995, dt * 60);
         }
       }
     }
