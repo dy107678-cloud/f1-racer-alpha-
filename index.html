@@ -1495,7 +1495,7 @@ class Game {
         // Pit approach is intentional, so don't count it as an excursion.
         car.offTrackTimer = 0;
       }
-
+   }
     resolveCarCollisions(this.cars, this.audio);
 
     // camera follow
@@ -1981,9 +1981,19 @@ class Game {
       // bot tire/pit status tag
       if (!c.isPlayer) {
         let tag = null, tagColor = null;
-        if (c.state === 'pit') { tag = 'PIT'; tagColor = '#ffcf4d'; }
-        else if (c.state === 'tirefail') { tag = 'STOP'; tagColor = '#ff3b30'; }
-        else if (c.isCritical()) { tag = '\u25CF'; tagColor = '#ff3b30'; }
+                if (c.outOfRace) {
+          tag = 'OUT';
+          tagColor = '#ff3b30';
+        } else if (c.state === 'pit') {
+          tag = 'PIT';
+          tagColor = '#ffcf4d';
+        } else if (c.state === 'tirefail') {
+          tag = 'STOP';
+          tagColor = '#ff3b30';
+        } else if (c.isCritical()) {
+          tag = '\u25CF';
+          tagColor = '#ff3b30';
+        }
         if (tag) { ctx.fillStyle = tagColor; ctx.font = '700 11px Arial'; ctx.textAlign = 'right'; ctx.fillText(tag, this.W - 20, 98 + i * 21); ctx.textAlign = 'left'; }
       }
     });
