@@ -740,7 +740,8 @@ class Car {
     this.boostCooldown = 0;
     this.offTrackTimer = 0;
     this.tireStartLap = 0; // fractional lap value when tires were last changed
-    this.emergencyTimer = 0; // seconds since tires went critical (red); 2s window before forced stop
+    this.emergencyTimer = 0; // seconds since tires went critical (red); 2s window before forced stop 
+    this.tireFailureHandled = false;
     this.aiWantsPit = false; // AI decision: currently trying to reach the pit area
     this.canPit = true; // prevents an instant re-trigger while still physically inside the pit lane
     this.pitActive = false;
@@ -804,18 +805,35 @@ class Car {
     // Brief extra handling penalty only while the temporary impact is still active; fades to 1
     // automatically as collisionImpactTimer counts down to 0 — never stored permanently.
     const impactHandlingMult = this.collisionImpactTimer > 0 ? 0.55 : 1;
-    let maxSpeed = st.topSpeed * wearSpeedMult;
-    let accel = st.accel * wearSpeedMult;
-    if (this.state === 'pit') { maxSpeed = Math.min(maxSpeed, 95); }
+let maxSpeed = st.topSpeed * wearSpeedMult;
+let accel = st.accel * 0.85 * wearSpeedMult;
+
+// Detect a car physically inside the pit lane.
+const inPitLane = inZoneS(this.track.pitZone, this.s, this.track.total) &&
+  this.lateral > this.track.width / 2 + 6 &&
+  this.lateral < this.track.pitLaneOffset + 60;
     // boost
     if (this.boostTimer > 0) { maxSpeed *= 1.35; this.boostTimer -= dt; }
-    if (boostHeld && this.boostCharges > 0 && this.boostCooldown <= 0 && this.boostTimer <= 0) {
+   if (!inPitLane && this.state !== 'pit' &&
+    boostHeld && this.boostCharges > 0 &&
+    this.boostCooldown <= 0 && this.boostTimer <= 0) {
       this.boostTimer = 1.1 * st.boostEff;
       this.boostCharges -= 1;
       this.boostCooldown = 0.6;
       this._justBoosted = true;
     }
     if (this.boostCooldown > 0) this.boostCooldown -= dt;
+    // Enforce the pit speed limit without instantly snapping down from racing speed.
+let frameSpeedCap = maxSpeed;
+
+if (inPitLane || this.state === 'pit') {
+  frameSpeedCap = Math.min(
+    maxSpeed,
+    this.speed > 95
+      ? Math.max(95, this.speed - st.braking * wearBrakeMult * dt)
+      : 95
+  );
+}
 
     if (throttle > 0) this.speed += accel * throttle * dt;
     if (brake > 0) this.speed -= st.braking * wearBrakeMult * brake * dt;
@@ -972,15 +990,28 @@ function handlePitStop(car, track, audio) {
    area. If they make it in time, handlePitStop above naturally takes over (state becomes
    'pit', which stops this timer). If not, the tires fail and the car is force-stopped for 10s. */
 function updateTireCritical(car, dt, audio) {
-  if (car.state !== 'racing') { return; }
-  if (!car.isCritical()) { car.emergencyTimer = 0; return; }
+  if (car.state !== 'racing') return;
+
+  if (!car.isCritical()) {
+    car.emergencyTimer = 0;
+    car.tireFailureHandled = false;
+    return;
+  }
+
+  // Do not repeat the same tire failure until the tires are replaced.
+  if (car.tireFailureHandled) return;
+
   car.emergencyTimer += dt;
+
   if (car.emergencyTimer >= TIRE_EMERGENCY_SECONDS) {
     car.state = 'tirefail';
     car.stateTimer = TIRE_FAILURE_SECONDS;
-    car.emergencyTimer = 0; // recounts from scratch if still critical once the stop ends
+    car.emergencyTimer = 0;
+    car.tireFailureHandled = true;
+
     if (car.isPlayer && audio) audio.bomb();
   }
+}
 }
 
 function resolveCarCollisions(cars, audio) {
