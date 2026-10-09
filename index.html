@@ -1124,11 +1124,16 @@ function aiDecide(car, track, cars, dt, difficultySkill) {
       ? rand(-track.width * 0.25, track.width * 0.25)
       : 0;
 
-    targetLateral = clamp(
-      targetLateralBase + avoidLateral + mistakeOffset,
-      -track.width * 0.42,
-      track.width * 0.42
-    );
+const safeLateralLimit = Math.max(
+  0,
+  track.width / 2 - CAR_RADIUS - 2
+);
+
+targetLateral = clamp(
+  targetLateralBase + avoidLateral + mistakeOffset,
+  -safeLateralLimit,
+  safeLateralLimit
+);
   }
 
   const targetS = nearInfo.s + lookaheadDist;
