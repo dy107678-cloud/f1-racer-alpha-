@@ -773,8 +773,9 @@ class Car {
     const lateral = (col === 0 ? -1 : 1) * 32;
     const p = t.worldAt(s, lateral);
     this.x = p.x; this.y = p.y;
-    this.angle = t.pointAt(s).angle;
-    this.speed = 0;
+   this.angle = t.pointAt(s).angle;
+this.driftAngle = 0;
+this.speed = 0;
     this.s = s; this.lateral = lateral; this.sGuess = s;
     this.lap = 0;
     this.checkpointIndex = 1;
@@ -938,10 +939,25 @@ if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
   Math.abs(steer) * Math.sqrt(dt * 60);
   this.speed -= this.speed * 0.18 * dt;
 }
- const vx = Math.cos(this.angle) * this.speed;
-const vy = Math.sin(this.angle) * this.speed;
-    this.x += vx * dt;
-    this.y += vy * dt;
+
+  // Speed-dependent drift: momentum lags behind the car's heading.
+  const speedRatio = clamp(this.speed / st.topSpeed, 0, 1);
+  const driftStrength = (1 - st.handling) * 0.9 + 0.12;
+  const targetDrift = -steer * speedRatio * speedRatio * driftStrength;
+
+  this.driftAngle = lerp(
+    this.driftAngle,
+    targetDrift,
+    Math.min(1, dt * 2.5)
+  );
+
+  const movementAngle = this.angle + this.driftAngle;
+  const vx = Math.cos(movementAngle) * this.speed;
+  const vy = Math.sin(movementAngle) * this.speed;
+
+  this.x += vx * dt;
+  this.y += vy * dt;
+
   }
 
   updateTrackInfo(track) {
@@ -1237,7 +1253,22 @@ if (brakeForTraffic > 0) {
 
 targetSpeed = clamp(targetSpeed, car.stats.topSpeed * 0.55, car.stats.topSpeed);
 
-if (headingToPit) targetSpeed = Math.min(targetSpeed, 90);
+if (headingToPit) {
+  const pitSpeedLimit = insideZone
+    ? 90
+    : lerp(
+        car.stats.topSpeed,
+        90,
+        clamp(
+          (PIT_SLOWDOWN_DIST - sToZoneStart) /
+            PIT_SLOWDOWN_DIST,
+          0,
+          1
+        )
+      );
+
+  targetSpeed = Math.min(targetSpeed, pitSpeedLimit);
+}
  let throttle = 0, brake = 0;
 
 const speedError = car.speed - targetSpeed;
