@@ -1489,9 +1489,11 @@ this.zoom = isMobile
     this.raceClock += dt;
     const track = this.track;
     const avoidPositions = this.cars.map(c => ({ x: c.x, y: c.y }));
-    track.update(dt, track.def.hazardDensity, avoidPositions);
+  track.update(dt, track.def.hazardDensity, avoidPositions);
 
-   for (const car of this.cars) {
+let playerFinishedThisFrame = false;
+
+for (const car of this.cars) {
   car._nowRef = this.raceClock;
   if (car.outOfRace) continue;
   if (car.finished) { car.state = 'finished'; continue; }
@@ -1516,12 +1518,24 @@ this.zoom = isMobile
       handlePitStop(car, track, this.audio);
       updateTireCritical(car, dt, this.audio);
 
-      car.checkpointUpdate(track,
-        (c) => { if (c.isPlayer) { this.lapPopup = { text: `LAP ${c.lap} / ${c.totalLaps}`, t: 2.0 }; this.audio.lap(); } },
-        (c) => { if (c.isPlayer) this._onPlayerFinish(); }
+            car.checkpointUpdate(track,
+        (c) => {
+          if (c.isPlayer) {
+            this.lapPopup = {
+              text: `LAP ${c.lap} / ${c.totalLaps}`,
+              t: 2.0
+            };
+            this.audio.lap();
+          }
+        },
+        (c) => {
+          if (c.isPlayer) playerFinishedThisFrame = true;
+        }
       );
+
+      if (car.isPlayer && playerFinishedThisFrame) continue;
       if (this.state !== 'RACING') return;
-      
+
       // A car inside the pit APPROACH zone (which starts well before the physical pit
       // entrance) is allowed to be out past the normal track edge without tripping the
       // off-track check or the AI's line-correction — matching the distance bots actually
@@ -1575,6 +1589,10 @@ this.zoom = isMobile
         car.offTrackTimer = 0;
       }
    }
+    if (playerFinishedThisFrame) {
+  this._onPlayerFinish();
+  return;
+}
     resolveCarCollisions(this.cars, this.audio);
 for (const car of this.cars) {
   if (car.finished || car.outOfRace || car.bodyworkWear > 5) {
