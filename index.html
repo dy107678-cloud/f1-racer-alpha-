@@ -974,9 +974,14 @@ if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
     const rel = ((nextCpS - this.prevS) + total) % total;
     if (rel <= fwd + 0.01) {
       if (this.checkpointIndex % track.checkpointCount === 0) {
-        // completed a lap
-        const now = this._nowRef;
-        const lapTime = now - this.lapStartTime;
+       // Estimate the crossing time within this frame so cars crossing in the
+// same frame are ordered by when they actually reached the line.
+const frameFraction = fwd > 0 ? clamp(rel / fwd, 0, 1) : 1;
+const now = Number.isFinite(this._frameStartTime)
+  ? this._frameStartTime +
+    (Number.isFinite(this._frameDt) ? this._frameDt : 0) * frameFraction
+  : this._nowRef;
+const lapTime = now - this.lapStartTime;
         if (this.bestLapTime == null || lapTime < this.bestLapTime) this.bestLapTime = lapTime;
         this.lapStartTime = now;
         this.lap += 1;
@@ -1495,6 +1500,8 @@ let playerFinishedThisFrame = false;
 
 for (const car of this.cars) {
   car._nowRef = this.raceClock;
+  car._frameStartTime = this.raceClock - dt;
+  car._frameDt = dt;
   if (car.outOfRace) continue;
   if (car.finished) { car.state = 'finished'; continue; }
       if (car.state === 'bombed' || car.state === 'pit' || car.state === 'tirefail') {
@@ -1514,9 +1521,18 @@ for (const car of this.cars) {
       car.updateTrackInfo(track);
 
       handleBoostPads(car, track, this.audio);
-      handleBombs(car, track, this.audio, avoidPositions);
-      handlePitStop(car, track, this.audio);
-      updateTireCritical(car, dt, this.audio);
+
+const hitBomb = handleBombs(car, track, this.audio, avoidPositions);
+if (hitBomb) {
+  // Re-sync progress to the teleport destination and do not process checkpoints
+  // for movement that was cancelled by the bomb this frame.
+  car.updateTrackInfo(track);
+  car.prevS = car.s;
+  continue;
+}
+
+handlePitStop(car, track, this.audio);
+updateTireCritical(car, dt, this.audio);
 
             car.checkpointUpdate(track,
         (c) => {
