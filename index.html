@@ -847,6 +847,10 @@ class Car {
 
   physicsStep(dt, throttle, brake, steer, boostHeld) {
     const st = this.stats;
+    if (this.state === 'pit') {
+  this.speed = 0;
+  return;
+}
     if (this.state === 'bombed' || this.state === 'grid' || this.state === 'tirefail') {
       this.speed = lerp(this.speed, 0, Math.min(1, dt * 6));
       return;
@@ -930,7 +934,8 @@ if (overSpeed > 0) {
 
 // Bodywork skidding
 if (skidding && Math.abs(steer) > 0.3 && this.speed > st.topSpeed * 0.35) {
-  this.angle += (Math.random() - 0.5) * 0.07 * Math.abs(steer);
+ this.angle += (Math.random() - 0.5) * 0.07 *
+  Math.abs(steer) * Math.sqrt(dt * 60);
   this.speed -= this.speed * 0.18 * dt;
 }
  const vx = Math.cos(this.angle) * this.speed;
@@ -1037,6 +1042,8 @@ function handlePitStop(car, track, audio) {
     const repairSeconds = car.bodyworkRepairSeconds();
     car.pitBodyworkRepairSeconds = bodyworkNeedsRepair ? repairSeconds : 0;
     car.state = 'pit';
+    car.speed = 0;
+car.boostTimer = 0;
     car.pitTotalSeconds = PIT_STOP_SECONDS + car.pitBodyworkRepairSeconds;
     car.stateTimer = car.pitTotalSeconds;
     car.tireStartLap = car.lapFraction();
@@ -1081,8 +1088,11 @@ function resolveCarCollisions(cars, audio) {
   for (let i = 0; i < cars.length; i++) {
     for (let j = i + 1; j < cars.length; j++) {
       const a = cars[i], b = cars[j];
-     if (a.outOfRace || b.outOfRace ||
-    a.state === 'bombed' || b.state === 'bombed') continue;
+if (
+  a.outOfRace || b.outOfRace ||
+  a.state === 'bombed' || b.state === 'bombed' ||
+  a.state === 'pit' || b.state === 'pit'
+) continue;
       const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy) || 0.001;
       const minD = CAR_RADIUS * 2;
@@ -1172,7 +1182,8 @@ function aiDecide(car, track, cars, dt, difficultySkill) {
   // target ramps in gradually over a long approach window so the car has enough room/time to
   // actually complete the lane change at speed, rather than snapping to the full offset late and
   // missing the entry (which previously caused repeated tire-failure loops on some tracks).
-  const PIT_APPROACH_DIST = 900;
+  const PIT_APPROACH_DIST = 650;
+const PIT_SLOWDOWN_DIST = 300;
   const sToZoneStart = ((track.pitZone.s0 - nearInfo.s) + track.total) % track.total;
   const insideZone = inZoneS(track.pitZone, nearInfo.s, track.total);
   const headingToPit = car.aiWantsPit && (sToZoneStart < PIT_APPROACH_DIST || insideZone);
@@ -1495,7 +1506,11 @@ this.zoom = isMobile
         } else car.offTrackTimer = 0;
       }
                // AI recovery: allow brief excursions before retiring a bot.
-      if (!car.isPlayer && !(car.aiWantsPit && inPitApproachNow)) {
+      if (
+  !car.isPlayer &&
+  car.state === 'racing' &&
+  !(car.aiWantsPit && inPitApproachNow)
+) {
         const recoveryTrigger = track.width / 2 + 14;
         const safeLateral = Math.max(
           0,
