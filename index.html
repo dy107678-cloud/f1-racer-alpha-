@@ -510,8 +510,6 @@ _buildRenderChunks() {
 }
     }
   }
-}
-
 /* -------------------------------- AUDIO ----------------------------------- */
 const ENGINE_PROFILES = {
   mercedes: { base: 92, range: 250, type1: 'sine', type2: 'triangle', harmonicRatio: 2.01, harmonicGain: 0.35, vol: 0.022 },
@@ -2721,12 +2719,27 @@ document.body.classList.toggle('is-touch', isMobileControlDevice);
   bindHold(document.getElementById('btnAccel'), () => { touch.throttle = 1; }, () => { touch.throttle = 0; });
   bindHold(document.getElementById('btnBrake'), () => { touch.brake = 1; }, () => { touch.brake = 0; });
   bindHold(document.getElementById('btnBoost'), () => { touch.boost = true; }, () => { touch.boost = false; });
+
   bindHold(document.getElementById('btnLeft'),
-    () => { touch.steer = -1; },
-    () => { if (touch.steer === -1) touch.steer = 0; });
+    () => {
+      touch.left = true;
+      touch.steer = (touch.right ? 1 : 0) - (touch.left ? 1 : 0);
+    },
+    () => {
+      touch.left = false;
+      touch.steer = (touch.right ? 1 : 0) - (touch.left ? 1 : 0);
+    });
+
   bindHold(document.getElementById('btnRight'),
-    () => { touch.steer = 1; },
-    () => { if (touch.steer === 1) touch.steer = 0; });
+    () => {
+      touch.right = true;
+      touch.steer = (touch.right ? 1 : 0) - (touch.left ? 1 : 0);
+    },
+    () => {
+      touch.right = false;
+      touch.steer = (touch.right ? 1 : 0) - (touch.left ? 1 : 0);
+    });
+
 
   const pauseBtn = document.getElementById('btnPause');
   if (pauseBtn) {
