@@ -502,8 +502,12 @@ _buildRenderChunks() {
       else if (b.flashT > 0) b.flashT -= dt;
     }
     this.activeBombs = this.activeBombs.filter(b => b.alive || b.respawnT > 0);
-    if (this.activeBombs.filter(b => b.alive).length < maxBombs && Math.random() < 0.02 * hazardDensity) {
-      this.spawnBomb(avoidPositions);
+    if (
+  this.activeBombs.filter(b => b.alive).length < maxBombs &&
+  Math.random() < 1 - Math.pow(1 - Math.min(0.02 * hazardDensity, 0.99), dt * 60)
+) {
+  this.spawnBomb(avoidPositions);
+}
     }
   }
 }
@@ -707,12 +711,22 @@ class Input {
     window.addEventListener('keyup', (e) => { this.keys.delete(e.key.toLowerCase()); });
     this.mouse = { x: 0, y: 0, clicked: false, down: false };
     // virtual on-screen control state, set by touch buttons (see boot code)
-    this.touch = { throttle: 0, brake: 0, steer: 0, boost: false, pauseTap: false };
+    this.touch = {
+  throttle: 0,
+  brake: 0,
+  steer: 0,
+  left: false,
+  right: false,
+  boost: false,
+  pauseTap: false
+};
     const resetControls = () => {
   this.keys.clear();
   this.touch.throttle = 0;
   this.touch.brake = 0;
   this.touch.steer = 0;
+   this.touch.left = false;
+   this.touch.right = false;
   this.touch.boost = false;
 };
 
@@ -761,7 +775,7 @@ class Car {
     this.totalLaps = totalLaps || 10;
     const profile = DIFFICULTY_PROFILES[track.def.difficulty] || DIFFICULTY_PROFILES.Medium;
     this.aiProfile = profile;
-    this.aiPitThreshold = clamp(profile.pitThreshold + rand(-profile.pitVariance, profile.pitVariance), 0.55, 1.05);
+    this.aiPitThreshold = clamp(profile.pitThreshold + rand(-profile.pitVariance, profile.pitVariance), 0.25, 1.05);
     this.reset(gridIndex);
   }
 
