@@ -2420,14 +2420,13 @@ for (const car of this.cars) {
   _renderMenu() {
     this._bgGradient();
     this._title('FORMULA RACER', 'Arcade Grand Prix \u2014 Select an option to begin');
+   
     const items = [
       ['Start Race', () => this.goto('CAR_SELECT')],
-      ['Car Selection', () => this.goto('CAR_SELECT')],
-      ['Driver Selection', () => this.goto('DRIVER_SELECT')],
-      ['Track Selection', () => this.goto('TRACK_SELECT')],
       ['Statistics', () => this.goto('STATS')],
       ['Settings', () => this.goto('SETTINGS')],
     ];
+
     const narrow = this.W < 760;
     const startX = 24, startY = 112, h = 48, gap = 12;
     const w = narrow ? this.W - startX * 2 : 320;
