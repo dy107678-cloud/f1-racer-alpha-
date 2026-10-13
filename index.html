@@ -2057,45 +2057,46 @@ for (const car of this.cars) {
     ctx.fillText(p.team.name.toUpperCase(), this.W - 34, 54);
     ctx.textAlign = 'left';
 
-    // Car information: speed, boost, tires, bodywork and race timer
+
+    // Compact car information: speed, boost, tires, bodywork and race timer
     const spd = Math.round(p.speed * 1.15);
 
     ctx.fillStyle = 'rgba(10,10,14,0.72)';
-    this._panel(ctx, 14, 14, 190, 150, 12);
+    this._panel(ctx, 14, 14, 166, 132, 12);
     ctx.fill();
 
     // Speed
     ctx.fillStyle = '#fff';
-    ctx.font = '700 26px "Segoe UI", Arial';
-    ctx.fillText(`${spd}`, 28, 48);
-
-    ctx.font = '600 11px "Segoe UI", Arial';
-    ctx.fillStyle = '#9aa';
-    ctx.fillText('KM/H', 28, 68);
-
-    // Boost
-    ctx.fillStyle = '#333';
-    ctx.fillRect(100, 32, 90, 9);
-    ctx.fillStyle = p.boostTimer > 0 ? '#ffb020' : '#3ddc84';
-    ctx.fillRect(100, 32, 90 * (p.boostCharges / 3), 9);
+    ctx.font = '700 22px "Segoe UI", Arial';
+    ctx.fillText(`${spd}`, 26, 43);
 
     ctx.font = '600 10px "Segoe UI", Arial';
     ctx.fillStyle = '#9aa';
-    ctx.fillText('BOOST', 100, 48);
+    ctx.fillText('KM/H', 26, 60);
+
+    // Boost
+    ctx.fillStyle = '#333';
+    ctx.fillRect(91, 27, 63, 7);
+    ctx.fillStyle = p.boostTimer > 0 ? '#ffb020' : '#3ddc84';
+    ctx.fillRect(91, 27, 63 * clamp(p.boostCharges / 3, 0, 1), 7);
+
+    ctx.font = '600 9px "Segoe UI", Arial';
+    ctx.fillStyle = '#9aa';
+    ctx.fillText('BOOST', 91, 44);
 
     // Tires
     const wear = p.tireWear();
 
     ctx.fillStyle = '#333';
-    ctx.fillRect(100, 66, 90, 9);
+    ctx.fillRect(91, 52, 63, 7);
     ctx.fillStyle = wear >= 1
       ? '#ff3b30'
       : (wear > 0.6 ? '#ffcf4d' : '#3ddc84');
-    ctx.fillRect(100, 66, 90 * clamp(wear, 0, 1), 9);
+    ctx.fillRect(91, 52, 63 * clamp(wear, 0, 1), 7);
 
-    ctx.font = '600 10px "Segoe UI", Arial';
+    ctx.font = '600 9px "Segoe UI", Arial';
     ctx.fillStyle = wear >= 1 ? '#ff6b60' : '#9aa';
-    ctx.fillText(wear >= 1 ? 'TIRES — PIT!' : 'TIRES', 100, 88);
+    ctx.fillText(wear >= 1 ? 'TIRES — PIT!' : 'TIRES', 91, 69);
 
     // Bodywork
     const body = p.bodyworkWear;
@@ -2106,26 +2107,33 @@ for (const car of this.cars) {
       '#3ddc84';
 
     ctx.fillStyle = '#333';
-    ctx.fillRect(100, 96, 90, 9);
+    ctx.fillRect(91, 77, 63, 7);
     ctx.fillStyle = bodyColor;
-    ctx.fillRect(100, 96, 90 * clamp(body / 100, 0, 1), 9);
+    ctx.fillRect(91, 77, 63 * clamp(body / 100, 0, 1), 7);
 
-    ctx.font = '600 10px "Segoe UI", Arial';
+    ctx.font = '600 9px "Segoe UI", Arial';
     ctx.fillStyle = body <= 60 ? bodyColor : '#9aa';
+    ctx.fillText(`BODY ${Math.round(body)}%`, 91, 94);
 
-    const bodyLabel =
-      body <= 5  ? `BODY ${Math.round(body)}% — DESTROYED` :
-      body <= 15 ? `BODY ${Math.round(body)}% — BOTH` :
-      body <= 30 ? `BODY ${Math.round(body)}% — SKID RISK` :
-      body <= 60 ? `BODY ${Math.round(body)}% — RESPONSE↓` :
-      `BODY ${Math.round(body)}%`;
+    // Damage warning
+    const damageStatus =
+      body <= 5  ? 'DESTROYED' :
+      body <= 15 ? 'BOTH' :
+      body <= 30 ? 'SKID RISK' :
+      body <= 60 ? 'RESPONSE DOWN' :
+      '';
 
-    ctx.fillText(bodyLabel, 100, 118);
+    if (damageStatus) {
+      ctx.fillStyle = bodyColor;
+      ctx.font = '600 9px "Segoe UI", Arial';
+      ctx.fillText(damageStatus, 91, 107);
+    }
 
     // Race timer
-    ctx.font = '600 13px "Segoe UI", Arial';
+    ctx.font = '600 11px "Segoe UI", Arial';
     ctx.fillStyle = '#c9c9d4';
-    ctx.fillText(`TIME ${fmtTime(this.raceClock)}`, 28, 144);
+    ctx.fillText(`TIME ${fmtTime(this.raceClock)}`, 26, 130);
+
 
     // opponents mini leaderboard (stacked below driver panel, top-right)
     const ranked = [...this.cars].sort((a, b) => (a.position || 9) - (b.position || 9));
