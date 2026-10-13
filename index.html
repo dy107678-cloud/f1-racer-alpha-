@@ -2475,7 +2475,10 @@ for (const car of this.cars) {
     this._bgGradient();
     this._title('CAR SELECTION', 'Choose your team \u2014 balanced stats, distinct personalities');
     const ctx = this.ctx;
-    const rects = this._gridLayout(TEAMS.length, { minW: 165, maxW: 250, maxCols: 4, gap: 16, margin: 24, startY: 112, bottomMargin: 66, minH: 200, maxH: 300 });
+    const mobile = this.W < 600;
+    const rects = this._gridLayout(TEAMS.length, mobile
+      ? { minW: 135, maxW: 200, maxCols: 2, gap: 10, margin: 14, startY: 100, bottomMargin: 66, minH: 150, maxH: 220 }
+      : { minW: 165, maxW: 250, maxCols: 4, gap: 16, margin: 24, startY: 112, bottomMargin: 66, minH: 200, maxH: 300 });
     TEAMS.forEach((t, i) => {
       const r = rects[i], x = r.x, y = r.y, cardW = r.w, cardH = r.h, k = r.scale;
       const active = i === this.selection.teamIdx;
@@ -2525,7 +2528,12 @@ for (const car of this.cars) {
     this._bgGradient();
     this._title('DRIVER SELECTION', 'Pick a driver \u2014 each brings a different edge on track');
     const ctx = this.ctx;
-    const rects = this._gridLayout(DRIVERS.length, { minW: 170, maxW: 260, maxCols: 4, gap: 16, margin: 24, startY: 112, bottomMargin: 66, minH: 200, maxH: 280 });
+   
+    const mobile = this.W < 600;
+    const rects = this._gridLayout(DRIVERS.length, mobile
+      ? { minW: 135, maxW: 200, maxCols: 2, gap: 10, margin: 14, startY: 100, bottomMargin: 66, minH: 150, maxH: 220 }
+      : { minW: 170, maxW: 260, maxCols: 4, gap: 16, margin: 24, startY: 112, bottomMargin: 66, minH: 200, maxH: 280 });
+
     DRIVERS.forEach((d, i) => {
       const r = rects[i], x = r.x, y = r.y, cardW = r.w, cardH = r.h, k = r.scale;
       const active = i === this.selection.driverIdx;
